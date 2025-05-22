@@ -1,0 +1,16 @@
+openapi: 3.0.0
+info:
+  title: CarbonHub Core API
+  description: Decentralized Integrated Carbon Trading Solution
+  version: 1.0.0
+servers:
+  - url: https://api.carbonhub.app
+    description: Production Server
+  - url: http://localhost:8080
+    description: Local Development Server
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
