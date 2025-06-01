@@ -1,3 +1,5 @@
+const { get } = require('mongoose');
+
 const Company = require('./emission.model').Company;
 
 const CO2_MOLAR_MASS = 44; // g/mol
@@ -47,11 +49,11 @@ const collect = async (req, res) => {
 
         const emissionTon = ppmToTons(ppm);
 
-        const yearlyEntry = getCompany.emissions.yearly.find(e => e.year === year);
-        if (yearlyEntry) {
-            yearlyEntry.totalTon += emissionTon;
+        const annualEntry = getCompany.emissions.annual.find(e => e.year === year);
+        if (annualEntry) {
+            annualEntry.totalTon += emissionTon;
         } else {
-            getCompany.emissions.yearly.push({ year, totalTon: emissionTon });
+            getCompany.emissions.annual.push({ year, totalTon: emissionTon });
         }
 
         const monthlyEntry = getCompany.emissions.monthly.find(e => e.month === month);
@@ -143,11 +145,11 @@ const report = async (req, res) => {
 
 const companies = async (req, res) => {
     try {
-        const getCompany = await Company.find({}, { __v: 0, apiKey: 0, emissions: 0, reports: 0});
+        let getCompany = await Company.find({}, { __v: 0, apiKey: 0, reports: 0});
         res.status(200).json({
             status: "success",
             message: "Successfuly read all participating companies",
-            data: getCompany.map(({ _id, name }) => ({ id: _id, name }))
+            data: getCompany.map(({ _id, name, emissions }) => ({ id: _id, name, annual_emissions: emissions.annual.toObject().map(({_id, ...keys}) => keys ) }))
         });
     } catch(err) {
         console.error(err);
@@ -159,7 +161,7 @@ const companies = async (req, res) => {
     }
 };
 
-const yearly = async (req, res) => {
+const annual = async (req, res) => {
     try {
         const { id } = req.params;
 
@@ -171,7 +173,7 @@ const yearly = async (req, res) => {
             });
         }
         
-        const getCompany = await Company.findOne( { _id: id }, { 'emissions.yearly': 1, _id: 0 } );
+        const getCompany = await Company.findOne( { _id: id }, { 'emissions.annual': 1, _id: 0 } );
         if (!getCompany) {
             return res.status(400).json({
                 status: 'error',
@@ -182,8 +184,8 @@ const yearly = async (req, res) => {
 
         res.status(200).json({
             status: "success",
-            message: "Successfully read company's yearly emission",
-            data: getCompany.emissions.yearly.map(({ year, totalTon }) => ({ year, totalTon }))
+            message: "Successfully read company's annual emission",
+            data: getCompany.emissions.annual.map(({ year, totalTon }) => ({ year, totalTon }))
         });
     } catch(err) {
         console.error(err);
@@ -271,7 +273,7 @@ module.exports = {
     collect,
     report,
     companies,
-    yearly,
+    annual,
     monthly,
     daily
 };

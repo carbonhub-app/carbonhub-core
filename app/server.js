@@ -20,8 +20,8 @@ app.use(cors({
     credentials: true
 }));
 
-// const authRouter = require('./domains/auth/auth.router');
-// app.use('/auth', authRouter);
+const authRouter = require('./domains/auth/auth.router');
+app.use('/auth', authRouter);
 
 const emissionRouter = require('./domains/emission/emission.router');
 app.use('/emission', emissionRouter);

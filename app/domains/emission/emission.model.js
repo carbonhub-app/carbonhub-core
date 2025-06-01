@@ -2,11 +2,11 @@ const mongoose = require('mongoose');
 const { randomUUID } = require('crypto');
 
 const companySchema = new mongoose.Schema({
+    publicKey: { type: String, required: false },
     name: { type: String, required: true },
     apiKey: { type: String, required: true, default: randomUUID },
-    publicKey: { type: String, required: false },
     emissions: {
-        yearly: [{
+        annual: [{
             year: { type: String, required: true },
             totalTon: { type: Number, required: true }
         }],

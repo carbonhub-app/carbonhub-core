@@ -1,13 +1,13 @@
 const express = require('express');
-const collectionRouter = express.Router();
+const emissionRouter = express.Router();
 
-const collectionController = require('./emission.controller');
+const emissionController = require('./emission.controller');
 
-collectionRouter.post('/collect', collectionController.collect);
-collectionRouter.post('/report', collectionController.report);
-collectionRouter.get('/companies', collectionController.companies);
-collectionRouter.get('/yearly/:id', collectionController.yearly);
-collectionRouter.get('/monthly/:id', collectionController.monthly);
-collectionRouter.get('/daily/:id', collectionController.daily);
+emissionRouter.post('/collect', emissionController.collect);
+emissionRouter.post('/report', emissionController.report);
+emissionRouter.get('/companies', emissionController.companies);
+emissionRouter.get('/annual/:id', emissionController.annual);
+emissionRouter.get('/monthly/:id', emissionController.monthly);
+emissionRouter.get('/daily/:id', emissionController.daily);
 
-module.exports = collectionRouter;
+module.exports = emissionRouter;
