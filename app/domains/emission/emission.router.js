@@ -9,5 +9,7 @@ emissionRouter.get('/companies', emissionController.companies);
 emissionRouter.get('/annual/:id', emissionController.annual);
 emissionRouter.get('/monthly/:id', emissionController.monthly);
 emissionRouter.get('/daily/:id', emissionController.daily);
+emissionRouter.get('/quota', emissionController.quota);
+emissionRouter.post('/withdraw', emissionController.withdraw);
 
 module.exports = emissionRouter;
