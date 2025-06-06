@@ -14,3 +14,591 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+  schemas:
+    Error:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [error]
+        message:
+          type: string
+        data:
+          type: object
+    Success:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success]
+        message:
+          type: string
+        data:
+          type: object
+    SwapCreateRequest:
+      type: object
+      required:
+        - userPublicKey
+        - fromToken
+        - amount
+      properties:
+        userPublicKey:
+          type: string
+          description: User's Solana public key
+        fromToken:
+          type: string
+          enum: [ECFCH, EURCH]
+          description: Token to swap from
+        amount:
+          type: number
+          description: Amount to swap
+    SwapExecuteRequest:
+      type: object
+      required:
+        - signedTransaction
+        - fromToken
+        - amount
+      properties:
+        signedTransaction:
+          type: string
+          description: Base64 encoded signed transaction
+        fromToken:
+          type: string
+          enum: [ECFCH, EURCH]
+          description: Token that was swapped from
+        amount:
+          type: number
+          description: Amount that was swapped
+    SwapBalanceResponse:
+      type: object
+      properties:
+        ECFCH:
+          type: object
+          properties:
+            balance:
+              type: number
+            decimals:
+              type: integer
+            mint:
+              type: string
+        EURCH:
+          type: object
+          properties:
+            balance:
+              type: number
+            decimals:
+              type: integer
+            mint:
+              type: string
+    SwapPriceResponse:
+      type: object
+      properties:
+        price:
+          type: number
+          description: Current exchange rate between ECFCH and EURCH
+    AuthChallengeRequest:
+      type: object
+      required:
+        - publicKey
+        - type
+      properties:
+        publicKey:
+          type: string
+          description: User's Solana public key
+        type:
+          type: string
+          enum: [user, company]
+          description: Type of authentication
+    AuthVerifyRequest:
+      type: object
+      required:
+        - publicKey
+        - challenge
+        - signature
+      properties:
+        publicKey:
+          type: string
+          description: User's Solana public key
+        challenge:
+          type: string
+          description: Challenge string to verify
+        signature:
+          type: string
+          description: Base64 encoded signature of the challenge
+    EmissionCollectRequest:
+      type: object
+      required:
+        - ppm
+        - time
+      properties:
+        ppm:
+          type: number
+          description: Parts per million of CO2
+        time:
+          type: string
+          format: date-time
+          description: Time of emission measurement
+    EmissionReportRequest:
+      type: object
+      required:
+        - ppm
+        - time
+      properties:
+        ppm:
+          type: number
+          description: Parts per million of CO2
+        time:
+          type: string
+          format: date-time
+          description: Time of emission measurement
+    EmissionWithdrawRequest:
+      type: object
+      required:
+        - amount
+      properties:
+        amount:
+          type: number
+          description: Amount of carbon quota to withdraw
+paths:
+  /auth/request-challenge:
+    post:
+      summary: Request authentication challenge
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthChallengeRequest'
+      responses:
+        '200':
+          description: Challenge generated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Success'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          challenge:
+                            type: string
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/verify-signature:
+    post:
+      summary: Verify challenge signature and get JWT token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthVerifyRequest'
+      responses:
+        '200':
+          description: Signature verified successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Success'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          publicKey:
+                            type: string
+                          type:
+                            type: string
+                          token:
+                            type: string
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /swap/create:
+    post:
+      summary: Create a swap transaction
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SwapCreateRequest'
+      responses:
+        '200':
+          description: Swap transaction created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Success'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          transaction:
+                            type: string
+                          swapAmount:
+                            type: number
+                          fromToken:
+                            type: string
+                          toToken:
+                            type: string
+                          needsCarbonhubAccount:
+                            type: boolean
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /swap/execute:
+    post:
+      summary: Execute a swap transaction
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SwapExecuteRequest'
+      responses:
+        '200':
+          description: Swap executed successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Success'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          signature:
+                            type: string
+                          mintResult:
+                            type: object
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /swap/balance:
+    get:
+      summary: Get user's token balances
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Balances retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Success'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SwapBalanceResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /swap/price:
+    get:
+      summary: Get current exchange rate
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Price retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Success'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SwapPriceResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /emission/collect:
+    post:
+      summary: Collect emission data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmissionCollectRequest'
+      responses:
+        '200':
+          description: Emission data collected successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /emission/report:
+    post:
+      summary: Report possible emission manipulation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmissionReportRequest'
+      responses:
+        '200':
+          description: Report submitted successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Success'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          ppm:
+                            type: number
+                          ton:
+                            type: number
+                          time:
+                            type: string
+                            format: date-time
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /emission/companies:
+    get:
+      summary: Get list of all companies
+      responses:
+        '200':
+          description: Companies retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Success'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            name:
+                              type: string
+                            annual_emissions:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  year:
+                                    type: string
+                                  totalTon:
+                                    type: number
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /emission/annual/{id}:
+    get:
+      summary: Get company's annual emissions
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Annual emissions retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Success'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            year:
+                              type: string
+                            totalTon:
+                              type: number
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /emission/monthly/{id}:
+    get:
+      summary: Get company's monthly emissions
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Monthly emissions retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Success'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            month:
+                              type: string
+                            totalTon:
+                              type: number
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /emission/daily/{id}:
+    get:
+      summary: Get company's daily emissions
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Daily emissions retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Success'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            date:
+                              type: string
+                            totalTon:
+                              type: number
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /emission/quota:
+    get:
+      summary: Get company's available carbon quota
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Quota retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Success'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            year:
+                              type: string
+                            available_quota:
+                              type: number
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /emission/withdraw:
+    post:
+      summary: Withdraw carbon quota and mint ECFCH tokens
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmissionWithdrawRequest'
+      responses:
+        '200':
+          description: Quota withdrawn and tokens minted successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Success'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          mintResult:
+                            type: object
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
