@@ -4,6 +4,7 @@ const { PublicKey } = require('@solana/web3.js');
 const crypto = require('crypto');
 const nacl = require('tweetnacl');
 const signToken = require('../../utils/auth/jwt/sign');
+const { randomUUID } = require('crypto');
 
 const challenge = async (req, res) => {
     try {
@@ -114,6 +115,16 @@ const verify = async (req, res) => {
             });
         }
 
+        let getCompany = await Company.findOne({ publicKey: publicKey });
+        if (!getCompany) {
+            getCompany = new Company({
+                publicKey: publicKey,
+                name: "Company " + publicKey.slice(0, 4) + "..." + publicKey.slice(-4),
+                apiKey: randomUUID()
+            });
+            await getCompany.save();
+        }
+
         res.status(200).json({
             status: "success",
             message: "Successfuly login as " + getAuth.type,
@@ -122,7 +133,8 @@ const verify = async (req, res) => {
                 type: getAuth.type,
                 token: signToken({
                     publicKey: publicKey
-                })
+                }),
+                company_id: getCompany._id
             }
         });
     } catch(err) {
@@ -135,7 +147,41 @@ const verify = async (req, res) => {
     }
 };
 
+const status = async (req, res) => {
+    try {
+        const getCompany = await Company.findOne({ publicKey: req.user.publicKey });
+        if (!getCompany) {
+            return res.status(400).json({
+                status: 'error',
+                message: "Public key not found",
+                data: {}
+            });
+        }
+
+        res.status(200).json({
+            status: "success",
+            message: "Successfuly get company status",
+            data: {
+                publicKey: req.user.publicKey,
+                type: getAuth.type,
+                token: signToken({
+                    publicKey: req.user.publicKey
+                }),
+                company_id: getCompany._id
+            }
+        });
+    } catch(err) {
+        console.error(err);
+        return res.status(400).json({
+            status: 'error',
+            message: process.env.DEBUG ? err.message : "Bad Request",
+            data: {}
+        });
+    }
+}
+
 module.exports = {
     challenge,
-    verify
+    verify,
+    status
 };
