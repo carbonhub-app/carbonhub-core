@@ -1,8 +1,20 @@
 const web3 = require('@solana/web3.js');
-const { getOrCreateAssociatedTokenAccount, createTransferInstruction, createAssociatedTokenAccountInstruction, getAssociatedTokenAddress, getAccount } = require('@solana/spl-token');
+const { createTransferInstruction, createAssociatedTokenAccountInstruction, getAssociatedTokenAddress, getAccount } = require('@solana/spl-token');
 const bs58 = require('bs58');
+const yahooFinance = require('yahoo-finance2').default;
 const ECFCHMinter = require('../../utils/web3/ECFCH_minter');
 const EURCHMinter = require('../../utils/web3/EURCH_minter');
+
+// Helper to get exchange rate from Yahoo Finance
+async function getExchangeRate() {
+    try {
+        const quote = await yahooFinance.quote('ECF=F');
+        return quote.regularMarketPrice;
+    } catch (error) {
+        console.error('Error fetching exchange rate:', error);
+        throw new Error('Failed to fetch exchange rate');
+    }
+}
 
 // Helper to try multiple RPC URLs
 async function getWorkingSolanaConnection(urls) {
@@ -26,6 +38,32 @@ const ECFCH_PUBLIC_KEY = new web3.PublicKey(process.env.ECFCH_PUBLIC_KEY);
 const ECFCH_PRIVATE_KEY = bs58.default.decode(process.env.ECFCH_PRIVATE_KEY);
 const EURCH_PUBLIC_KEY = new web3.PublicKey(process.env.EURCH_PUBLIC_KEY);
 const EURCH_PRIVATE_KEY = bs58.default.decode(process.env.EURCH_PRIVATE_KEY);
+
+// Calculate swap amount using real-time exchange rate
+const calculateSwapAmount = async (fromToken, amount) => {
+    console.log('Input values:', { fromToken, amount });
+    
+    const exchangeRate = await getExchangeRate();
+    console.log('Exchange rate:', exchangeRate);
+    
+    const rawAmount = fromToken === 'ECFCH' ? amount * exchangeRate : amount / exchangeRate;
+    console.log('Raw amount after exchange rate calculation:', rawAmount);
+    
+    // Use decimals of the target token (ECFCH: 3 decimals, EURCH: 6 decimals)
+    const targetToken = fromToken === 'ECFCH' ? 'EURCH' : 'ECFCH';
+    const decimals = targetToken === 'ECFCH' ? 3 : 6;
+    const multiplier = Math.pow(10, decimals);
+    console.log('Decimal conversion:', { targetToken, decimals, multiplier });
+    
+    // Round to appropriate decimals and convert to integer
+    const roundedAmount = Math.round(rawAmount * multiplier) / multiplier;
+    console.log('Rounded amount:', roundedAmount);
+    
+    const finalAmount = Math.floor(roundedAmount * multiplier);
+    console.log('Final integer amount:', finalAmount);
+    
+    return finalAmount;
+};
 
 const create = async (req, res) => {
     try {
@@ -125,8 +163,8 @@ const create = async (req, res) => {
             needsCarbonhubAccount = true;
         }
 
-        // Calculate swap amount (1 ECFCH = 0.5 EURCH)
-        const swapAmount = fromToken === 'ECFCH' ? amount * 0.5 : amount * 2;
+        // Calculate swap amount using real-time exchange rate
+        const swapAmount = await calculateSwapAmount(fromToken, amount);
         const transferAmount = amount * (fromToken === 'ECFCH' ? 10 ** 3 : 10 ** 6);
 
         // Create transfer transaction
@@ -179,7 +217,7 @@ const create = async (req, res) => {
             message: "Successfully create swap",
             data: {
                 transaction: serializedTransaction,
-                swapAmount: swapAmount,
+                swapAmount: swapAmount / (fromToken === 'ECFCH' ? 10 ** 6 : 10 ** 3), // Convert back to human-readable format
                 fromToken,
                 toToken: fromToken === 'ECFCH' ? 'EURCH' : 'ECFCH',
                 needsCarbonhubAccount
@@ -259,8 +297,8 @@ const execute = async (req, res) => {
             throw error;
         }
 
-        // Calculate swap amount (1 ECFCH = 0.5 EURCH)
-        const swapAmount = fromToken === 'ECFCH' ? amount * 0.5 : amount * 2;
+        // Calculate swap amount using real-time exchange rate
+        const swapAmount = await calculateSwapAmount(fromToken, amount);
 
         // Mint the swapped tokens
         let mintResult;
@@ -380,8 +418,29 @@ const balance = async (req, res) => {
     }
 };
 
+const price = async (req, res) => {
+    try {
+        const exchangeRate = await getExchangeRate();
+        res.status(200).json({
+            status: "success",
+            message: "Successfully get price",
+            data: {
+                price: exchangeRate
+            }
+        });
+    } catch (err) {
+        console.error('Error in price:', err);
+        return res.status(400).json({
+            status: 'error',
+            message: process.env.DEBUG ? err.message : "Bad Request",
+            data: {}
+        });
+    }
+};
+
 module.exports = {
     create,
     execute,
-    balance
+    balance,
+    price
 };

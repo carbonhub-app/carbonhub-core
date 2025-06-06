@@ -231,7 +231,7 @@ const mint = async (targetPublicKey, amount) => {
                 mintPublicKey,
                 associatedTokenAccount.address,
                 payer.publicKey, // Use payer as mint authority since that's what was set during creation
-                amount * (10 ** 3) // Convert to the smallest unit (3 decimals)
+                amount // Amount is already in the smallest unit
             )
         );
 
