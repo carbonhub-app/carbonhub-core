@@ -1,0 +1,17 @@
+{
+    "name": "EURCH",
+    "symbol": "EURCH",
+    "description": "Euro Stablecoin issued by CarbonHub for Carbon Trading.",
+    "image": "https://cdn.carbonhub.app/logo.png",
+    "external_url": "https://carbonhub.app",
+    "attributes": [
+        {
+            "trait_type": "Category",
+            "value": "Carbon Credits"
+        },
+        {
+            "trait_type": "Region",
+            "value": "Europe"
+        }
+    ]
+}

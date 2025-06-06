@@ -1,4 +1,5 @@
 const Company = require('./emission.model').Company;
+const { mint } = require('../../utils/web3/ECFCH_minter');
 
 const CO2_MOLAR_MASS = 44; // g/mol
 const AIR_MOLAR_MASS = 29; // g/mol
@@ -271,21 +272,11 @@ const daily = async (req, res) => {
 
 const quota = async (req, res) => {
     try {
-        const apiKey = req.headers['x-api-key'];
-
-        if (!apiKey) {
-            return res.status(400).json({
-                status: 'error',
-                message: 'API key missing',
-                data: {}
-            });
-        }
-        
-        const getCompany = await Company.findOne({ apiKey: apiKey });
+        const getCompany = await Company.findOne({ publicKey: req.user.publicKey });
         if (!getCompany) {
             return res.status(400).json({
                 status: 'error',
-                message: "Invalid API key",
+                message: "Company not found",
                 data: {}
             });
         }
@@ -314,21 +305,11 @@ const quota = async (req, res) => {
 
 const withdraw = async (req, res) => {
     try {
-        const apiKey = req.headers['x-api-key'];
-
-        if (!apiKey) {
-            return res.status(400).json({
-                status: 'error',
-                message: 'API key missing',
-                data: {}
-            });
-        }
-        
-        const getCompany = await Company.findOne({ apiKey: apiKey });
+        const getCompany = await Company.findOne({ publicKey: req.user.publicKey });
         if (!getCompany) {
             return res.status(400).json({
                 status: 'error',
-                message: "Invalid API key",
+                message: "Company not found",
                 data: {}
             });
         }
@@ -365,14 +346,19 @@ const withdraw = async (req, res) => {
         getCompany.quotaWithdrawal.push({
             amount,
             time: new Date()
-        })
+        });
 
         await getCompany.save();
+
+        // Mint ECFCH tokens to the company's public key
+        const mintResult = await mint(getCompany.publicKey, amount);
         
         res.status(200).json({
             status: "success",
             message: `Successfully withdraw ${amount} tonnes of carbon quota and minted the tokenized quota`,
-            data: {}
+            data: {
+                mintResult
+            }
         });
     } catch(err) {
         console.error(err);

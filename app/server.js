@@ -27,6 +27,9 @@ app.use('/auth', authRouter);
 const emissionRouter = require('./domains/emission/emission.router');
 app.use('/emission', emissionRouter);
 
+const swapRouter = require('./domains/swap/swap.router');
+app.use('/swap', swapRouter);
+
 app.get('/', function(req, res) {
   res.sendFile(path.join(__dirname, 'templates/pages/index.html'));
 });
