@@ -115,14 +115,17 @@ const verify = async (req, res) => {
             });
         }
 
-        let getCompany = await Company.findOne({ publicKey: publicKey });
-        if (!getCompany) {
-            getCompany = new Company({
-                publicKey: publicKey,
-                name: "Company " + publicKey.slice(0, 4) + "..." + publicKey.slice(-4),
-                apiKey: randomUUID()
-            });
-            await getCompany.save();
+        let getCompany = {};
+        if (getAuth.type == "company") {
+            getCompany = await Company.findOne({ publicKey: publicKey });
+            if (!getCompany) {
+                getCompany = new Company({
+                    publicKey: publicKey,
+                    name: "Company " + publicKey.slice(0, 4) + "..." + publicKey.slice(-4),
+                    apiKey: randomUUID()
+                });
+                await getCompany.save();
+            }
         }
 
         res.status(200).json({
@@ -134,8 +137,8 @@ const verify = async (req, res) => {
                 token: signToken({
                     publicKey: publicKey
                 }),
-                company_id: getCompany._id,
-                apiKey: getCompany.apiKey
+                company_id: getCompany._id || null,
+                apiKey: getCompany.apiKey || null
             }
         });
     } catch(err) {
@@ -154,7 +157,7 @@ const status = async (req, res) => {
         if (!getCompany) {
             return res.status(400).json({
                 status: 'error',
-                message: "Public key not found",
+                message: "Public key not found or account is not a company",
                 data: {}
             });
         }
@@ -164,7 +167,7 @@ const status = async (req, res) => {
             message: "Successfuly get company status",
             data: {
                 publicKey: req.user.publicKey,
-                type: getAuth.type,
+                type: "company",
                 token: signToken({
                     publicKey: req.user.publicKey
                 }),
