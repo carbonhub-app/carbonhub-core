@@ -134,7 +134,8 @@ const verify = async (req, res) => {
                 token: signToken({
                     publicKey: publicKey
                 }),
-                company_id: getCompany._id
+                company_id: getCompany._id,
+                apiKey: getCompany.apiKey
             }
         });
     } catch(err) {
@@ -167,7 +168,8 @@ const status = async (req, res) => {
                 token: signToken({
                     publicKey: req.user.publicKey
                 }),
-                company_id: getCompany._id
+                company_id: getCompany._id,
+                apiKey: getCompany.apiKey
             }
         });
     } catch(err) {
